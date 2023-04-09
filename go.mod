@@ -1,4 +1,4 @@
-module tonpay-go-sdk
+module github.com/TheTonpay/tonpay-go-sdk
 
 go 1.19
 
