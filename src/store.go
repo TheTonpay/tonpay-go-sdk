@@ -40,6 +40,7 @@ type StoreData struct {
 	Name        string
 	Description string
 	Image       string
+	Webhook     string
 	MccCode     uint64
 	IsActive    bool
 	InvoiceCode *cell.Cell
@@ -59,6 +60,10 @@ func StoreDataToCell(storeConfig StoreData) (*cell.Cell, error) {
 	if err != nil {
 		return nil, err
 	}
+	webhookCell, err := wallet.CreateCommentCell(storeConfig.Webhook)
+	if err != nil {
+		return nil, err
+	}
 
 	var IsActive int64 = -1
 	if !storeConfig.IsActive {
@@ -69,7 +74,10 @@ func StoreDataToCell(storeConfig StoreData) (*cell.Cell, error) {
 		MustStoreAddr(storeConfig.Owner).
 		MustStoreRef(nameCell).
 		MustStoreRef(descriptionCell).
-		MustStoreRef(imageCell).
+		MustStoreRef(cell.BeginCell().
+			MustStoreRef(imageCell).
+			MustStoreRef(webhookCell).
+			EndCell()).
 		MustStoreUInt(storeConfig.MccCode, 16).
 		MustStoreInt(IsActive, 2).
 		MustStoreRef(storeConfig.InvoiceCode).
@@ -114,7 +122,7 @@ func RequestPurchaseMessage(invoiceComment string, amount uint64) (*cell.Cell, e
 		EndCell(), nil
 }
 
-func EditStoreMessage(storeName string, storeDescription string, storeImage string, mccCode uint64) (*cell.Cell, error) {
+func EditStoreMessage(storeName string, storeDescription string, storeImage string, storeWebhook string, mccCode uint64) (*cell.Cell, error) {
 	name, err := wallet.CreateCommentCell(storeName)
 	if err != nil {
 		return nil, err
@@ -127,6 +135,10 @@ func EditStoreMessage(storeName string, storeDescription string, storeImage stri
 	if err != nil {
 		return nil, err
 	}
+	webhook, err := wallet.CreateCommentCell(storeWebhook)
+	if err != nil {
+		return nil, err
+	}
 
 	return cell.BeginCell().
 		MustStoreUInt(EditStore, 32).
@@ -134,6 +146,7 @@ func EditStoreMessage(storeName string, storeDescription string, storeImage stri
 		MustStoreRef(name).
 		MustStoreRef(description).
 		MustStoreRef(image).
+		MustStoreRef(webhook).
 		MustStoreUInt(mccCode, 16).
 		EndCell(), nil
 }
@@ -199,6 +212,16 @@ func UpgradeCodeInvoiceMessage(invoiceCode *cell.Cell) (*cell.Cell, error) {
 		EndCell(), nil
 }
 
+func GetOwner(api *ton.APIClient, block *ton.BlockIDExt, addr *address.Address) (*address.Address, error) {
+	res, err := api.RunGetMethod(context.Background(), block, addr, "get_store_owner")
+	if err != nil {
+		return nil, err
+	}
+
+	owner := res.MustSlice(0).MustLoadAddr()
+	return owner, nil
+}
+
 func GetName(api *ton.APIClient, block *ton.BlockIDExt, addr *address.Address) (string, error) {
 	res, err := api.RunGetMethod(context.Background(), block, addr, "get_store_name")
 	if err != nil {
@@ -229,6 +252,16 @@ func GetImage(api *ton.APIClient, block *ton.BlockIDExt, addr *address.Address) 
 	return image, nil
 }
 
+func GetStoreWebhook(api *ton.APIClient, block *ton.BlockIDExt, addr *address.Address) (string, error) {
+	res, err := api.RunGetMethod(context.Background(), block, addr, "get_store_webhook")
+	if err != nil {
+		return "", err
+	}
+
+	webhook := res.MustCell(0).BeginParse().MustLoadStringSnake()
+	return webhook, nil
+}
+
 func GetMccCode(api *ton.APIClient, block *ton.BlockIDExt, addr *address.Address) (int64, error) {
 	res, err := api.RunGetMethod(context.Background(), block, addr, "get_store_mcc_code")
 	if err != nil {
@@ -237,16 +270,6 @@ func GetMccCode(api *ton.APIClient, block *ton.BlockIDExt, addr *address.Address
 
 	mccCode := res.MustInt(0).Int64()
 	return mccCode, nil
-}
-
-func GetOwner(api *ton.APIClient, block *ton.BlockIDExt, addr *address.Address) (*address.Address, error) {
-	res, err := api.RunGetMethod(context.Background(), block, addr, "get_store_owner")
-	if err != nil {
-		return nil, err
-	}
-
-	owner := res.MustSlice(0).MustLoadAddr()
-	return owner, nil
 }
 
 func GetIsActive(api *ton.APIClient, block *ton.BlockIDExt, addr *address.Address) (bool, error) {
@@ -279,16 +302,18 @@ func GetStoreData(api *ton.APIClient, block *ton.BlockIDExt, addr *address.Addre
 	name := res.MustCell(1).BeginParse().MustLoadStringSnake()
 	description := res.MustCell(2).BeginParse().MustLoadStringSnake()
 	image := res.MustCell(3).BeginParse().MustLoadStringSnake()
-	mccCode := res.MustInt(4)
-	isActive := res.MustInt(5)
-	invoiceCode := res.MustCell(6)
-	version := res.MustInt(7)
+	webhook := res.MustCell(4).BeginParse().MustLoadStringSnake()
+	mccCode := res.MustInt(5)
+	isActive := res.MustInt(6)
+	invoiceCode := res.MustCell(7)
+	version := res.MustInt(8)
 
 	return StoreData{
 		Owner:       owner,
 		Name:        name[4:],
 		Description: description[4:],
 		Image:       image[4:],
+		Webhook:     webhook[4:],
 		MccCode:     mccCode.Uint64(),
 		IsActive:    isActive.Int64() == -1,
 		InvoiceCode: invoiceCode,

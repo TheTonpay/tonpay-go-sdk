@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	tonpaygo "tonpay-go-sdk/src"
 
+	tonpaygo "github.com/TheTonpay/tonpay-go-sdk/src"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
@@ -16,7 +16,7 @@ func CheckIsInvoicePaid(addr *address.Address) bool {
 	client := liteclient.NewConnectionPool()
 
 	// Choose testnet or mainnet
-	// configUrl := "https://ton-blockchain.github.io/global-config.json"	   // mainnet
+	// configUrl := "https://ton-blockchain.github.io/global.config.json"	   // mainnet
 	configUrl := "https://ton-blockchain.github.io/testnet-global.config.json" // testnet
 	err := client.AddConnectionsFromConfigUrl(context.Background(), configUrl)
 	if err != nil {

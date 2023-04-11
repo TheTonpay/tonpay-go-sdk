@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	tonpaygo "tonpay-go-sdk/src"
 
+	tonpaygo "github.com/TheTonpay/tonpay-go-sdk/src"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
 )
