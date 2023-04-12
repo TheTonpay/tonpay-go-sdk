@@ -84,7 +84,7 @@ func StoreDataToCell(storeConfig StoreData) (*cell.Cell, error) {
 		EndCell(), nil
 }
 
-func IssueInvoiceMessage(customer *address.Address, issueHasCustomer bool, invoiceID string, metadata string, amount uint64) (*cell.Cell, error) {
+func IssueInvoiceMessage(customer *address.Address, invoiceHasCustomer bool, invoiceID string, metadata string, amount uint64) (*cell.Cell, error) {
 	invoiceIDCell, err := wallet.CreateCommentCell(invoiceID)
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func IssueInvoiceMessage(customer *address.Address, issueHasCustomer bool, invoi
 	}
 
 	var hasCustomer int64 = 0
-	if issueHasCustomer {
+	if invoiceHasCustomer {
 		hasCustomer = -1
 		if customer != nil || customer.IsAddrNone() {
 			return nil, fmt.Errorf("customer address is not set")
