@@ -34,17 +34,17 @@ type InvoiceData struct {
 
 func InvoiceConfigToCell(config InvoiceData) (*cell.Cell, error) {
 	storeAddress := address.MustParseAddr(config.Store)
-	if storeAddress != nil && !storeAddress.IsAddrNone() {
+	if storeAddress == nil || storeAddress.IsAddrNone() {
 		return nil, fmt.Errorf("invalid store address")
 	}
 
 	merchantAddress := address.MustParseAddr(config.Merchant)
-	if merchantAddress != nil && !merchantAddress.IsAddrNone() {
+	if merchantAddress == nil || merchantAddress.IsAddrNone() {
 		return nil, fmt.Errorf("invalid merchant address")
 	}
 
 	beneficiaryAddress := address.MustParseAddr(config.Beneficiary)
-	if beneficiaryAddress == nil || !beneficiaryAddress.IsAddrNone() {
+	if beneficiaryAddress == nil || beneficiaryAddress.IsAddrNone() {
 		return nil, fmt.Errorf("invalid beneficiary address")
 	}
 

@@ -84,32 +84,44 @@ func StoreDataToCell(storeConfig StoreData) (*cell.Cell, error) {
 		EndCell(), nil
 }
 
-func IssueInvoiceMessage(addr *address.Address, anyoneCanPay bool, comment string, amount uint64) (*cell.Cell, error) {
-	commentCell, err := wallet.CreateCommentCell(comment)
+func IssueInvoiceMessage(customer *address.Address, issueHasCustomer bool, invoiceID string, metadata string, amount uint64) (*cell.Cell, error) {
+	invoiceIDCell, err := wallet.CreateCommentCell(invoiceID)
+	if err != nil {
+		return nil, err
+	}
+
+	metadataCell, err := wallet.CreateCommentCell(metadata)
 	if err != nil {
 		return nil, err
 	}
 
 	var hasCustomer int64 = 0
-	if anyoneCanPay {
+	if issueHasCustomer {
 		hasCustomer = -1
-	} else if addr != nil || addr.IsAddrNone() {
-		return nil, fmt.Errorf("address is not set")
+		if customer != nil || customer.IsAddrNone() {
+			return nil, fmt.Errorf("customer address is not set")
+		}
 	}
 
-	addressCell := cell.BeginCell().MustStoreAddr(addr).EndCell()
+	customerAddressCell := cell.BeginCell().MustStoreAddr(customer).EndCell()
 	return cell.BeginCell().
 		MustStoreUInt(IssueInvoice, 32).
 		MustStoreUInt(0, 64).
 		MustStoreInt(hasCustomer, 2).
-		MustStoreRef(addressCell).
-		MustStoreRef(commentCell).
+		MustStoreRef(customerAddressCell).
+		MustStoreRef(invoiceIDCell).
+		MustStoreRef(metadataCell).
 		MustStoreUInt(amount, 64).
 		EndCell(), nil
 }
 
-func RequestPurchaseMessage(invoiceComment string, amount uint64) (*cell.Cell, error) {
-	commentCell, err := wallet.CreateCommentCell(invoiceComment)
+func RequestPurchaseMessage(invoiceID string, metadata string, amount uint64) (*cell.Cell, error) {
+	invoiceIDCell, err := wallet.CreateCommentCell(invoiceID)
+	if err != nil {
+		return nil, err
+	}
+
+	metadataCell, err := wallet.CreateCommentCell(metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +129,8 @@ func RequestPurchaseMessage(invoiceComment string, amount uint64) (*cell.Cell, e
 	return cell.BeginCell().
 		MustStoreUInt(RequestPurchase, 32).
 		MustStoreUInt(0, 64).
-		MustStoreRef(commentCell).
+		MustStoreRef(invoiceIDCell).
+		MustStoreRef(metadataCell).
 		MustStoreUInt(amount, 64).
 		EndCell(), nil
 }
@@ -282,13 +295,13 @@ func GetIsActive(api *ton.APIClient, block *ton.BlockIDExt, addr *address.Addres
 	return isActive == -1, nil
 }
 
-func GetStoreVersion(api *ton.APIClient, block *ton.BlockIDExt, addr *address.Address) (int64, error) {
+func GetStoreVersion(api *ton.APIClient, block *ton.BlockIDExt, addr *address.Address) (uint64, error) {
 	res, err := api.RunGetMethod(context.Background(), block, addr, "get_store_version")
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 
-	version := res.MustInt(0).Int64()
+	version := res.MustInt(0).Uint64()
 	return version, nil
 }
 
