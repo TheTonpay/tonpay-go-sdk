@@ -2,6 +2,7 @@ package tonpaygo
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
@@ -31,13 +32,51 @@ type InvoiceData struct {
 	Version     int64
 }
 
-func invoiceConfigToCell(config InvoiceData) *cell.Cell {
+func InvoiceConfigToCell(config InvoiceData) (*cell.Cell, error) {
+	storeAddress := address.MustParseAddr(config.Store)
+	if storeAddress != nil && !storeAddress.IsAddrNone() {
+		return nil, fmt.Errorf("invalid store address")
+	}
+
+	merchantAddress := address.MustParseAddr(config.Merchant)
+	if merchantAddress != nil && !merchantAddress.IsAddrNone() {
+		return nil, fmt.Errorf("invalid merchant address")
+	}
+
+	beneficiaryAddress := address.MustParseAddr(config.Beneficiary)
+	if beneficiaryAddress == nil || !beneficiaryAddress.IsAddrNone() {
+		return nil, fmt.Errorf("invalid beneficiary address")
+	}
+
 	var customerAddress = address.MustParseAddr(ZeroAddress)
 	var hasCustomer int64 = 0
 	if config.HasCustomer {
 		hasCustomer = -1
 		customerAddress = address.MustParseAddr(config.Customer)
+
+		if customerAddress == nil || !customerAddress.IsAddrNone() {
+			return nil, fmt.Errorf("customer address is required")
+		}
 	}
+
+	if config.InvoiceID == "" {
+		return nil, fmt.Errorf("invoice ID is required")
+	}
+
+	if len(config.InvoiceID) > 120 {
+		return nil, fmt.Errorf("invoice ID must not be longer than 120 characters")
+	}
+
+	if config.Metadata != "" && len(config.Metadata) > 500 {
+		return nil, fmt.Errorf("metadata must not be longer than 500 characters")
+	}
+
+	if config.Amount <= 0 {
+		return nil, fmt.Errorf("amount must be greater than 0")
+	}
+
+	invoiceIDCell, _ := wallet.CreateCommentCell(config.InvoiceID)
+	metadataCell, _ := wallet.CreateCommentCell(config.Metadata)
 
 	var isPaid int64 = 0
 	if config.Paid {
@@ -49,13 +88,10 @@ func invoiceConfigToCell(config InvoiceData) *cell.Cell {
 		isActive = -1
 	}
 
-	invoiceIDCell, _ := wallet.CreateCommentCell(config.InvoiceID)
-	metadataCell, _ := wallet.CreateCommentCell(config.Metadata)
-
 	cell := cell.BeginCell().
-		MustStoreAddr(address.MustParseAddr(config.Store)).
-		MustStoreAddr(address.MustParseAddr(config.Merchant)).
-		MustStoreAddr(address.MustParseAddr(config.Beneficiary)).
+		MustStoreAddr(storeAddress).
+		MustStoreAddr(merchantAddress).
+		MustStoreAddr(beneficiaryAddress).
 		MustStoreInt(hasCustomer, 2).
 		MustStoreRef(cell.BeginCell().MustStoreAddr(customerAddress).EndCell()).
 		MustStoreRef(invoiceIDCell).
@@ -65,7 +101,7 @@ func invoiceConfigToCell(config InvoiceData) *cell.Cell {
 		MustStoreInt(isActive, 2).
 		EndCell()
 
-	return cell
+	return cell, nil
 }
 
 func GetStore(api *ton.APIClient, block *ton.BlockIDExt, addr *address.Address) (*address.Address, error) {
