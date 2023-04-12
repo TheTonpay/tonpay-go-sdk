@@ -30,9 +30,9 @@ var (
 	ActivateStoreFee   = tlb.MustFromTON("0.005").NanoTON().Uint64()
 	DeactivateStoreFee = tlb.MustFromTON("0.005").NanoTON().Uint64()
 	IssueInvoiceFee    = tlb.MustFromTON("0.02").NanoTON().Uint64()
-	RequestPurchaseFee = tlb.MustFromTON("0.04").NanoTON().Uint64()
-	FullUpgradeFee     = tlb.MustFromTON("0.005").NanoTON().Uint64()
-	InvoiceUpgradeFee  = tlb.MustFromTON("0.005").NanoTON().Uint64()
+	RequestPurchaseFee = tlb.MustFromTON("0.05").NanoTON().Uint64()
+	FullUpgradeFee     = tlb.MustFromTON("0.006").NanoTON().Uint64()
+	InvoiceUpgradeFee  = tlb.MustFromTON("0.006").NanoTON().Uint64()
 )
 
 type StoreData struct {
