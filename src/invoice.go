@@ -11,6 +11,14 @@ import (
 	"github.com/xssnick/tonutils-go/tvm/cell"
 )
 
+// OpCodes
+const (
+	EditInvoice       = 0x48c504f3
+	DeactivateInvoice = 0x1cc0b11e
+	ActivateInvoice   = 0xc285952f
+	PayInvoice        = 0xf53a02d3
+)
+
 var (
 	DeployInvoiceFee   = tlb.MustFromTON("0.005").NanoTON().Uint64()
 	EditInvoiceFee     = tlb.MustFromTON("0.005").NanoTON().Uint64()
@@ -99,6 +107,77 @@ func InvoiceConfigToCell(config InvoiceData) (*cell.Cell, error) {
 		MustStoreUInt(config.Amount, 64).
 		MustStoreInt(isPaid, 2).
 		MustStoreInt(isActive, 2).
+		EndCell()
+
+	return cell, nil
+}
+
+func EditInvoiceMessage(hasCustomer bool, customer string, invoiceID string, metadata string, amount uint64) (*cell.Cell, error) {
+	var customerAddress = address.MustParseAddr(ZeroAddress)
+	var hasCustomer_ int64 = 0
+	if hasCustomer {
+		hasCustomer_ = -1
+		customerAddress = address.MustParseAddr(customer)
+
+		if customerAddress == nil || !customerAddress.IsAddrNone() {
+			return nil, fmt.Errorf("customer address is required")
+		}
+	}
+
+	if invoiceID == "" {
+		return nil, fmt.Errorf("invoice ID is required")
+	}
+
+	if len(invoiceID) > 120 {
+		return nil, fmt.Errorf("invoice ID must not be longer than 120 characters")
+	}
+
+	if metadata != "" && len(metadata) > 500 {
+		return nil, fmt.Errorf("metadata must not be longer than 500 characters")
+	}
+
+	if amount <= 0 {
+		return nil, fmt.Errorf("amount must be greater than 0")
+	}
+
+	invoiceIDCell, _ := wallet.CreateCommentCell(invoiceID)
+	metadataCell, _ := wallet.CreateCommentCell(metadata)
+
+	cell := cell.BeginCell().
+		MustStoreUInt(EditInvoice, 32).
+		MustStoreUInt(0, 64).
+		MustStoreInt(hasCustomer_, 2).
+		MustStoreRef(cell.BeginCell().MustStoreAddr(customerAddress).EndCell()).
+		MustStoreRef(invoiceIDCell).
+		MustStoreRef(metadataCell).
+		MustStoreUInt(amount, 64).
+		EndCell()
+
+	return cell, nil
+}
+
+func DeactivateInvoiceMessage() (*cell.Cell, error) {
+	cell := cell.BeginCell().
+		MustStoreUInt(DeactivateInvoice, 32).
+		MustStoreUInt(0, 64).
+		EndCell()
+
+	return cell, nil
+}
+
+func ActivateInvoiceMessage() (*cell.Cell, error) {
+	cell := cell.BeginCell().
+		MustStoreUInt(ActivateInvoice, 32).
+		MustStoreUInt(0, 64).
+		EndCell()
+
+	return cell, nil
+}
+
+func PayInvoiceMessage() (*cell.Cell, error) {
+	cell := cell.BeginCell().
+		MustStoreUInt(PayInvoice, 32).
+		MustStoreUInt(0, 64).
 		EndCell()
 
 	return cell, nil
